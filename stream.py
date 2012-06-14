@@ -867,9 +867,15 @@ class ProcessPool(Stream):
 			raise BrokenPipe('All workers are dead, refusing to summit jobs. '
 			                 'Use another Pool.')
 		def feed():
-			for item in inpipe:
-				self.inqueue.put(item)
-			self.inqueue.put(StopIteration)
+			while 1:
+				try:
+					item = next(inpipe)
+					self.inqueue.put(item)
+				except StopIteration:
+					self.inqueue.put(StopIteration)
+					break
+				except Exception, e:
+					self.failqueue.put((None, e))
 		self.feeder_thread = threading.Thread(target=feed)
 		self.feeder_thread.start()
 		return self.iterator
